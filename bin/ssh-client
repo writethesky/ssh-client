@@ -1,0 +1,292 @@
+#!/bin/sh
+
+function selectServer()
+{
+	
+	outputServerList ${1}
+
+
+
+	KEY=()
+
+	while :
+	do
+		read -s -n 1 KEY
+	
+		case ${KEY[0]} in
+		"B")
+			selectServer $((${1}+1))
+			return $?
+		;;
+		"A")
+			selectServer $((${1}-1))
+			return $?
+		;;
+		"")
+			selected=${1}
+			return 1
+		;;
+		"q")
+			return 0
+		;;
+		*)
+			# echo ${KEY}
+			continue
+		;;
+		esac
+	done
+
+	
+}
+
+
+
+
+function outputServerList()
+{
+
+
+	local i=0
+	for((j=0; j<${#content[@]}; j++));
+	do
+		printf "\b\r"
+	done
+	
+	getClienWidth
+	columns=$?
+	while [ $i -lt ${#content[@]} ]  
+	do
+		line=${content[$i]}
+		array=(${line// / })
+		
+		is_selected=" "
+		if [ ${1} -eq ${i} ]; then
+			is_selected="*"
+		fi
+
+		getCNlength ${array[0]}
+		spc=$((${columns}+$?))
+		# echo $columns
+		printf "%-${spc}s" "[${is_selected}]${array[0]} ${array[1]}"
+
+		i=$(($i+1))
+	done
+	# # eval $1="'${content}'"
+	# return 1
+}
+
+function outputFuncList()
+{
+	getClienWidth
+	columns=$?
+	local i=0
+	funcList=("连接已保存的服务器" "连接新的服务器")
+
+	for((j=0; j<${#funcList[@]}; j++));
+	do
+		printf "\b\r"
+	done
+	
+	for line in ${funcList[@]};
+	do
+		is_selected=" "
+		if [ ${1} -eq ${i} ]; then
+			is_selected="*"
+		fi
+
+		getCNlength ${line}
+		spc=$((${columns}+$?))
+
+		printf "%-${spc}s" "[${is_selected}]$line"
+
+		i=$(($i+1))
+	done
+}
+
+function clearOutpubFunc()
+{
+	for((j=0; j<${#funcList[@]}; j++));
+	do
+		printf "\b\r"
+	done
+	for((j=0; j<${#funcList[@]}; j++));
+	do
+		getClienWidth
+		columns=$?
+		printf "%-${columns}s"
+	done
+	for((j=0; j<${#funcList[@]}; j++));
+	do
+		printf "\b\r"
+	done
+}
+
+function readServerList()
+{
+	
+	local array=()
+	local i=0
+
+	if [ ! -f "$file" ]; then
+		return 0
+	fi
+
+	while read line
+	do
+		array[$i]=$line
+		content[$i]=$line
+		i=$(($i+1))
+	done  < "$file"
+
+	if [ 0 -eq $i ]; then
+		return 0
+	fi
+	
+	return 1
+}
+
+function printHelp()
+{
+	echo "****************请选择你要连接的服务器:****************"
+	echo "┌─────────────────────────────────────────────────────┐"
+	echo "│ 可以通过键盘上的 上、下 方向键选择您要连接的服务器  │"
+	echo "│ 通过 回车键 或 空格键 来确定您的选择                │"
+	echo "│ 通过 q键 退出选择                                   │"
+	echo "└─────────────────────────────────────────────────────┘"
+}
+
+function connectServer()
+{
+	local line=${content[$1]}
+	local array=(${line// / })
+	/usr/bin/expect \
+	-c "spawn ssh ${array[1]}" \
+	-c "expect \"*password:\"" \
+	-c "send \"Dream1216\r\"" \
+	-c "expect \"Last login:*\"" \
+	-c "send \"PS1=\\\"\\\\e\]2;\[${array[0]}\]\\\\a\\\\u@\\\\h:\\\\w# \\\"\r\"" \
+	-c "send \"clear\r\"" \
+	-c "interact"
+
+}
+
+function getClienWidth()
+{
+	str=$(stty size)
+	array=(${str// / })
+	return ${array[1]}
+}
+
+function getCNlength()
+{
+	local num=0
+	local str=$1
+	local i
+	
+
+	for((i=0;i<${#str};i++));
+	do
+		char=${str:$i:1}
+		# echo $char
+		# awk '{print gensub(/[^!-~]/,"1","g",$i)}'
+		local nchar=${char/[^!-~]/^}
+		
+		if [ "^" = "${nchar}" ]; then
+			# echo $nchar
+			num=$(($num+1))
+		fi
+	done
+	return $num
+}
+
+selectFunc()
+{
+	outputFuncList $1
+
+	KEY=()
+
+	while :
+	do
+		read -s -n 1 KEY
+	
+		case ${KEY[0]} in
+		"B")
+			selectFunc $((${1}+1))
+			return $?
+		;;
+		"A")
+			selectFunc $((${1}-1))
+			return $?
+		;;
+		"")
+			selected=${1}
+			return 1
+		;;
+		"q")
+			return 0
+		;;
+		*)
+			# echo ${KEY}
+			continue
+		;;
+		esac
+	done
+}
+
+function createServer()
+{
+	local name
+	local ip
+	local user
+	local password
+	read -p "名称:" name
+	read -p "I P :" ip
+	read -p "用户:" user
+	read -s -p "密码:" password
+	echo "$name $user@$ip $password" >> $file
+}
+
+
+function run()
+{
+	
+	selectFunc 0
+	if [ 1 -ne $? ]; then
+		
+		return
+	fi
+
+	clearOutpubFunc
+
+
+	if [ 0 -eq $selected ]; then
+		content=()
+		readServerList content
+		
+		if [ $? -eq 0 ]; then
+			printf "没有任何已保存的服务器，请先创建"
+			read -s -n 1 KEY
+			run
+			return
+		fi
+		# echo ${content[0]}
+		selectServer 0
+
+
+		if [ 1 -ne $? ]; then
+			run
+			return
+		fi
+		connectServer $selected
+	fi
+	if [ 1 -eq $selected ]; then
+		createServer
+	fi
+
+}
+
+file="${HOME}/.ssh-client"
+printHelp
+run
+
+

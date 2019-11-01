@@ -1,0 +1,4 @@
+#!/bin/sh
+path=`dirname $0`
+sudo chmod 777 ${path}/bin/ssh-client
+sudo cp ${path}/bin/ssh-client /usr/local/bin/ssh-client
