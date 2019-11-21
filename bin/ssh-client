@@ -162,7 +162,7 @@ function connectServer()
 	/usr/bin/expect \
 	-c "spawn ssh ${array[1]}" \
 	-c "expect \"*password:\"" \
-	-c "send \"Dream1216\r\"" \
+	-c "send \"${array[2]}\r\"" \
 	-c "expect \"Last login:*\"" \
 	-c "send \"PS1=\\\"\\\\e\]2;\[${array[0]}\]\\\\a\\\\u@\\\\h:\\\\w# \\\"\r\"" \
 	-c "send \"clear\r\"" \
@@ -278,6 +278,7 @@ function run()
 			return
 		fi
 		connectServer $selected
+		return
 	fi
 	if [ 1 -eq $selected ]; then
 		createServer
