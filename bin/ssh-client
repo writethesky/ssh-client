@@ -161,8 +161,10 @@ function connectServer()
 	local array=(${line// / })
 	/usr/bin/expect \
 	-c "spawn ssh ${array[1]}" \
-	-c "expect \"*password:\"" \
-	-c "send \"${array[2]}\r\"" \
+	-c "expect {
+		\"yes/no\" { send \"yes\r\"; exp_continue} 
+		\"*password:\" {send \"${array[2]}\r\"}
+	}" \
 	-c "expect \"Last login:*\"" \
 	-c "send \"PS1=\\\"\\\\e\]2;\[${array[0]}\]\\\\a\\\\u@\\\\h:\\\\w# \\\"\r\"" \
 	-c "send \"clear\r\"" \
